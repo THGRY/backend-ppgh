@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model average_time_spent_per_visit {
+  Date                DateTime? @db.Date
+  Total_Seconds_Spent BigInt?   @map("Total Seconds Spent")
+  Visits              BigInt?
+
+  @@index([Date], map: "idx_average_time_spent_per_visit_date")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model member_signup_page_velocity_wedding_enquiries {
+  Date              DateTime? @db.Date
+  HotelID           String?   @db.NVarChar(Max)
+  Member_Signups    BigInt?   @map("Member Signups")
+  Page_Views        BigInt?   @map("Page Views")
+  Visits            BigInt?
+  Wedding_Enquiries BigInt?   @map("Wedding Enquiries")
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pageviews {
+  td_version                                    String? @db.NVarChar(20)
+  td_charset                                    String? @db.NVarChar(20)
+  td_language                                   String? @db.NVarChar(20)
+  td_color                                      String? @db.NVarChar(20)
+  td_screen                                     String? @db.NVarChar(30)
+  td_viewport                                   String? @db.NVarChar(30)
+  td_title                                      String? @db.NVarChar(Max)
+  td_description                                String? @db.NVarChar(Max)
+  td_url                                        String? @db.NVarChar(Max)
+  td_user_agent                                 String? @db.NVarChar(Max)
+  td_platform                                   String? @db.NVarChar(50)
+  td_host                                       String? @db.NVarChar(100)
+  td_path                                       String? @db.NVarChar(Max)
+  td_referrer                                   String? @db.NVarChar(Max)
+  td_browser                                    String? @db.NVarChar(50)
+  td_browser_version                            String? @db.NVarChar(20)
+  td_os                                         String? @db.NVarChar(30)
+  td_os_version                                 String? @db.NVarChar(20)
+  td_global_id                                  String? @db.NVarChar(50)
+  td_client_id                                  String? @db.NVarChar(50)
+  td_ip                                         String? @db.NVarChar(20)
+  booking_bookingwidget_bookingdestination      String? @db.NVarChar(50)
+  itemid                                        String? @db.NVarChar(50)
+  saleid                                        String? @db.NVarChar(50)
+  userid                                        String? @db.NVarChar(50)
+  user_userinfo_loginstatus                     String? @db.NVarChar(50)
+  user_userinfo_membertier                      String? @db.NVarChar(50)
+  user_userinfo_memberid                        String? @db.NVarChar(50)
+  user_userinfo_gravty_gravty_id                String? @db.NVarChar(50)
+  user_userinfo_gravty_gravty_discovery_balance String? @db.NVarChar(20)
+  user_userinfo_gravty_gravty_total_accrued     String? @db.NVarChar(20)
+  user_userinfo_gravty_gravty_total_redeemed    String? @db.NVarChar(20)
+  user_userinfo_gravty_gravty_total_expired     String? @db.NVarChar(20)
+  event_eventinfo_tabname                       String? @db.NVarChar(50)
+  event_eventinfo_eventtype                     String? @db.NVarChar(50)
+  booking_bookingwidget_arrivaldate             String? @db.NVarChar(20)
+  booking_bookingwidget_checkoutdate            String? @db.NVarChar(20)
+  booking_bookingwidget_totalnightstay          String? @db.NVarChar(10)
+  booking_bookingwidget_noofrooms               String? @db.NVarChar(10)
+  booking_bookingwidget_adultroom               String? @db.NVarChar(10)
+  booking_bookingwidget_childrenroom            String? @db.NVarChar(10)
+  booking_bookingwidget_usertypes               String? @db.NVarChar(50)
+  filter_filterinfo_ratepreference              String? @db.NVarChar(50)
+  filter_filterinfo_accesscode                  String? @db.NVarChar(50)
+  booking_bookingwidget_bookinginitiatedfrom    String? @db.NVarChar(50)
+  filter_filterinfo_offername                   String? @db.NVarChar(100)
+  hotel_city                                    String? @db.NVarChar(50)
+  hotel_country                                 String? @db.NVarChar(50)
+  hotel_name                                    String? @db.NVarChar(100)
+  sitedestination                               String? @db.NVarChar(20)
+  checkin_day_of_week                           String? @db.NVarChar(20)
+  roomarray_rateplancode                        String? @db.NVarChar(50)
+  roomarray_rateplanname                        String? @db.NVarChar(100)
+  roomarray_offername                           String? @db.NVarChar(100)
+  roomarray_accesscode                          String? @db.NVarChar(50)
+  roomarray_roomcode                            String? @db.NVarChar(50)
+  roomarray_roomname                            String? @db.NVarChar(100)
+  roomarray_roomrate                            String? @db.NVarChar(50)
+  filter_filterinfo_rateplancode                String? @db.NVarChar(50)
+  filter_filterinfo_rateplanname                String? @db.NVarChar(100)
+  user_userinfo_usersegment                     String? @db.NVarChar(50)
+  event_eventinfo_eventname                     String? @db.NVarChar(100)
+  booking_bookingwidget_bedtype                 String? @db.NVarChar(100)
+  booking_bookingwidget_addons                  String? @db.NVarChar(Max)
+  booking_bookingwidget_personalizedyourstay    String? @db.NVarChar(50)
+  booking_transaction_confirmationno            String? @db.NVarChar(50)
+  booking_transaction_memberrate                String? @db.NVarChar(20)
+  booking_transaction_roomtax                   String? @db.NVarChar(20)
+  booking_transaction_roompayment               String? @db.NVarChar(20)
+  booking_transaction_addonstax                 String? @db.NVarChar(20)
+  booking_transaction_addonspayment             String? @db.NVarChar(20)
+  booking_transaction_totalpayment              String? @db.NVarChar(20)
+  booking_transaction_totalpaymentlocalized     String? @db.NVarChar(20)
+  booking_transaction_cardtype                  String? @db.NVarChar(20)
+  booking_transaction_roomrate                  String? @db.NVarChar(20)
+  booking_transaction_currencytype              String? @db.NVarChar(10)
+  filter_filterinfo_roomcode                    String? @db.NVarChar(50)
+  filter_filterinfo_roomtype                    String? @db.NVarChar(50)
+  filter_filterinfo_roomname                    String? @db.NVarChar(100)
+  event_eventinfo_formname                      String? @db.NVarChar(50)
+  event_eventinfo_formfield                     String? @db.NVarChar(50)
+  booking_bookingwidget_ratefrom                String? @db.NVarChar(20)
+  booking_transaction_roombool                  String? @db.NVarChar(10)
+  booking_transaction_roomrateupval             String? @db.NVarChar(20)
+  booking_transaction_roomcodeupgrade           String? @db.NVarChar(50)
+  booking_transaction_bookingdate               String? @db.NVarChar(20)
+  booking_transaction_daysbeforebooking         String? @db.NVarChar(10)
+  hotel_brand                                   String? @db.NVarChar(50)
+  aa_eventpage                                  String? @db.NVarChar(100)
+  aa_eventname                                  String? @db.NVarChar(100)
+  aa_eventlabel                                 String? @db.NVarChar(100)
+  aa_event_category                             String? @db.NVarChar(50)
+  event_type                                    String? @db.NVarChar(50)
+  aa_eventcategory                              String? @db.NVarChar(50)
+  ghaemail                                      String? @db.NVarChar(100)
+  user_userinfo_loginstatus_1                   String? @db.NVarChar(50)
+  user_userinfo_membertier_1                    String? @db.NVarChar(50)
+  user_userinfo_memberid_1                      String? @db.NVarChar(50)
+  filter_filterinfo_rateplancode_1              String? @db.NVarChar(50)
+  filter_filterinfo_rateplanname_1              String? @db.NVarChar(100)
+  filter_filterinfo_offername_1                 String? @db.NVarChar(100)
+  filter_filterinfo_accesscode_1                String? @db.NVarChar(50)
+  booking_bookingwidget_arrivaldate_1           String? @db.NVarChar(20)
+  booking_bookingwidget_checkoutdate_1          String? @db.NVarChar(20)
+  booking_bookingwidget_totalnightstay_1        String? @db.NVarChar(10)
+  booking_bookingwidget_adultroom_1             String? @db.NVarChar(10)
+  booking_bookingwidget_childrenroom_1          String? @db.NVarChar(10)
+  booking_transaction_confirmationno_1          String? @db.NVarChar(50)
+  booking_transaction_totalpayment_1            String? @db.NVarChar(20)
+  booking_transaction_currencytype_1            String? @db.NVarChar(10)
+  filter_filterinfo_roomname_1                  String? @db.NVarChar(100)
+  booking_bookingwidget_bedtype_1               String? @db.NVarChar(100)
+  roomarray_rateplancode_1                      String? @db.NVarChar(50)
+  roomarray_rateplanname_1                      String? @db.NVarChar(100)
+  booking_bookingwidget_unit_rateplancode       String? @db.NVarChar(50)
+  utm_source                                    String? @db.NVarChar(50)
+  utm_medium                                    String? @db.NVarChar(50)
+  utm_campaign                                  String? @db.NVarChar(100)
+  utm_content                                   String? @db.NVarChar(100)
+  user_userinfo_email                           String? @db.NVarChar(100)
+  time                                          BigInt?
+
+  @@index([td_client_id, booking_transaction_confirmationno, time], map: "idx_pageviews_unique_booking")
+  @@index([booking_transaction_confirmationno], map: "pageviews_booking_transaction_confirmationno_index")
+  @@index([sitedestination], map: "pageviews_sitedestination_index")
+  @@index([td_client_id], map: "pageviews_td_client_id_index")
+  @@index([time], map: "pageviews_time_index")
+  @@index([user_userinfo_email], map: "pageviews_user_userinfo_email_index")
+  @@index([user_userinfo_memberid], map: "pageviews_user_userinfo_memberid_index")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model top_channel {
+  Date               DateTime? @db.Date
+  HotelID            String?   @db.NVarChar(Max)
+  Last_Touch_Channel String?   @map("Last Touch Channel") @db.NVarChar(Max)
+  Unique_Visitors    BigInt?   @map("Unique Visitors")
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model top_entry_page {
+  Date            DateTime? @db.Date
+  HotelID         String?   @db.NVarChar(255)
+  Entry_Pages     String?   @map("Entry Pages") @db.NVarChar(255)
+  Unique_Visitors Int?      @map("Unique Visitors")
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model top_exit_page {
+  Date            DateTime? @db.Date
+  HotelID         String?   @db.NVarChar(255)
+  Exit_Pages      String?   @map("Exit Pages") @db.NVarChar(255)
+  Unique_Visitors Int?      @map("Unique Visitors")
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model top_rate_plan {
+  Date            DateTime? @db.Date
+  HotelID         String?   @db.NVarChar(255)
+  Rate_Plan_Name  String?   @map("Rate Plan Name") @db.NVarChar(255)
+  Rate_Plan_Code  String?   @map("Rate Plan Code") @db.NVarChar(255)
+  Unique_Visitors Int?      @map("Unique Visitors")
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model top_room_name_selected {
+  Date            DateTime? @db.Date
+  HotelID         String?   @db.NVarChar(255)
+  Room_Name       String?   @map("Room Name") @db.NVarChar(500)
+  Unique_Visitors Int?      @map("Unique Visitors")
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model upgrade_rate_pageurl {
+  Date     DateTime? @db.Date
+  HotelID  String?   @db.NVarChar(Max)
+  Page_URL String?   @map("Page URL") @db.NVarChar(Max)
+  Visits   BigInt?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model upgrade_rate_roomname {
+  Date            DateTime? @db.Date
+  HotelID         String?   @db.NVarChar(Max)
+  Room_Name       String?   @map("Room Name") @db.NVarChar(Max)
+  Unique_Visitors BigInt?   @map("Unique Visitors")
+
+  @@ignore
+}

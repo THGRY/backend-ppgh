@@ -1,0 +1,39 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "backend pythia ",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test-metrics.js",
+    "test-charts": "node test-charts.js",
+    "test-pooling": "node test-connection-pooling.js",
+    "test-performance": "node test-chart-performance.js",
+    "test-all": "npm run test && npm run test-charts",
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js",
+    "test-api": "node test-api.js"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "axios": "^1.11.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.7.0",
+    "morgan": "^1.10.1",
+    "redis": "^5.8.2",
+    "tedious": "^18.6.1"
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
