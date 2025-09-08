@@ -16,7 +16,12 @@
     "start": "node src/app.js",
     "test-api": "node test-api.js",
     "build": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "docker:build": "docker build -t l1-backend .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env l1-backend",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f backend"
   },
   "keywords": [],
   "dependencies": {
