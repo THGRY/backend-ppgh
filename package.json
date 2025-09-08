@@ -14,11 +14,14 @@
     "test-all": "npm run test && npm run test-charts",
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
-    "test-api": "node test-api.js"
+    "test-api": "node test-api.js",
+    "build": "prisma generate",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "dependencies": {
     "@prisma/client": "^6.15.0",
+    "prisma": "^6.15.0",
     "axios": "^1.11.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
