@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('../generated/prisma');
 const cacheService = require('./advancedCacheService');
 const smartCacheService = require('./smartCacheService');
 const logger = require('../utils/logger');
