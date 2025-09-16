@@ -8,8 +8,8 @@ const compression = require('compression');
 // Import routes
 const l1Routes = require('./routes/l1Routes');
 
-// Import cache warming service
-const cacheWarmingService = require('./services/cacheWarmingService');
+// Import dynamic scaling middleware
+const { dynamicScalingMiddleware, getScalingStatus } = require('./middleware/dynamicScaling');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +20,9 @@ app.use(cors()); // Enable CORS for frontend
 app.use(morgan('combined')); // Logging
 app.use(compression()); // Gzip compression
 app.use(express.json()); // Parse JSON bodies
+
+// Apply dynamic scaling middleware to all routes
+app.use(dynamicScalingMiddleware);
 
 // Health check endpoint with database connection verification
 app.get('/health', async (req, res) => {
@@ -37,19 +40,13 @@ app.get('/health', async (req, res) => {
       database: {
         status: dbHealth.database.healthy ? 'connected' : 'disconnected',
         connection: 'Azure SQL Server',
-        pooling: 'Active (20 max connections)',
+        pooling: 'Active (35 max connections)',
         last_check: dbHealth.database.timestamp
-      },
-      cache: {
-        status: dbHealth.cache.healthy ? 'connected' : 'disconnected',
-        connection: 'Redis Cloud',
-        performance: dbHealth.cache.stats || 'Not available',
-        latency: dbHealth.cache.latency || 'Unknown'
       }
     };
     
-    if (!dbHealth.healthy) {
-      response.database.error = dbHealth.error;
+    if (!dbHealth.overall.healthy) {
+      response.database.error = dbHealth.database.error;
       return res.status(503).json(response);
     }
     
@@ -70,21 +67,20 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Cache performance endpoint
-app.get('/cache-stats', async (req, res) => {
+// Dynamic scaling stats endpoint
+app.get('/scaling-stats', async (req, res) => {
   try {
-    const smartCacheService = require('./services/smartCacheService');
-    const cacheStats = smartCacheService.getOptimizedStats();
-    const warmingStats = cacheWarmingService.getStats();
+    const scalingStatus = getScalingStatus();
     
     res.json({
-      cache: cacheStats,
-      warming: warmingStats,
-      timestamp: new Date().toISOString()
+      success: true,
+      scaling: scalingStatus,
+      message: 'Dynamic connection scaling is active'
     });
   } catch (error) {
     res.status(500).json({
-      error: 'Failed to get cache stats',
+      success: false,
+      error: 'Failed to get scaling stats',
       message: error.message
     });
   }
@@ -102,7 +98,12 @@ app.use((req, res) => {
     available_endpoints: [
       'GET /health',
       '--- KEY METRICS ---',
-      
+      'GET /api/l1-summary-data?from=YYYY-MM-DD&to=YYYY-MM-DD',
+      'GET /api/l1-unique-visitors?from=YYYY-MM-DD&to=YYYY-MM-DD',
+      'GET /api/l1-total-bookings?from=YYYY-MM-DD&to=YYYY-MM-DD',
+      'GET /api/l1-room-nights?from=YYYY-MM-DD&to=YYYY-MM-DD',
+      'GET /api/l1-total-revenue?from=YYYY-MM-DD&to=YYYY-MM-DD',
+      'GET /api/l1-abv?from=YYYY-MM-DD&to=YYYY-MM-DD',
       '--- CHARTS ---',
       'GET /api/l1-awareness-engagement?from=YYYY-MM-DD&to=YYYY-MM-DD',
       'GET /api/l1-conversions?from=YYYY-MM-DD&to=YYYY-MM-DD',
@@ -126,14 +127,7 @@ app.use((error, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  const logger = require('./utils/logger');
-  logger.success(`L1 Metrics API running on http://localhost:${PORT}`);
-  logger.info(`Health check: http://localhost:${PORT}/health`);
-  logger.debug(`Example: http://localhost:${PORT}/api/l1-summary-data?from=2025-07-01&to=2025-07-07`);
-  logger.info(`Smart Redis caching enabled with optimized performance`);
-  
-  // Start cache warming service
-  cacheWarmingService.scheduleWarming();
+  console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;

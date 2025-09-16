@@ -1,6 +1,5 @@
 // Use shared Prisma instance from main service
 const l1Service = require('../l1MetricsService');
-const smartCacheService = require('../smartCacheService');
 
 // Helper function to get initialized prisma instance
 async function getPrisma() {
@@ -38,54 +37,47 @@ async function getPrisma() {
 async function getUniqueVisitorsByChannel(fromDate, toDate) {
   // DIRECT DATABASE QUERY (Caching disabled for reliability)
   try {
-        console.log(`🔍 Getting visitors by channel from ${fromDate} to ${toDate}`);
         
         // Convert dates to Unix timestamps
         const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
         const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
         
-        // ULTRA-FAST: Leverages [time, td_client_id] index for 4-5s response
+        // OPTIMIZED: SQL Engineer's optimized query for Unique Visitors by Channel
         const prisma = await getPrisma();
         const result = await prisma.$queryRaw`
       WITH channel_data AS (
-        SELECT
-          td_client_id,
-          -- Streamlined channel logic for speed
-          CASE
-            WHEN utm_source LIKE '%google%' THEN 'Paid Search'
-            WHEN utm_source LIKE '%facebook%' THEN 'Social Media'  
-            WHEN utm_source LIKE '%email%' THEN 'Email'
-            WHEN utm_source IS NOT NULL THEN 'UTM Campaign'
-            WHEN td_referrer LIKE '%google.com%' THEN 'Organic Search'
-            WHEN td_referrer LIKE '%facebook.com%' THEN 'Social Media'
-            WHEN td_referrer IS NULL OR td_referrer = '' THEN 'Direct'
-            ELSE 'Other'
-          END as channel
-        FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT) WITH (INDEX(idx_pageviews_part_client_id))
-        WHERE time >= ${fromTimestamp} 
-          AND time <= ${toTimestamp}
-          AND td_client_id IS NOT NULL
+          SELECT
+              td_client_id,
+              CASE
+                  WHEN LOWER(utm_source) LIKE '%google%' THEN 'Paid Search'
+                  WHEN LOWER(utm_source) LIKE '%facebook%' THEN 'Social Media'
+                  WHEN LOWER(utm_source) LIKE '%email%' THEN 'Email'
+                  WHEN utm_source IS NOT NULL AND utm_source != '' THEN 'UTM Campaign'
+                  WHEN LOWER(td_referrer) LIKE '%google.com%' THEN 'Organic Search'
+                  WHEN LOWER(td_referrer) LIKE '%facebook.com%' THEN 'Social Media'
+                  WHEN td_referrer IS NULL OR td_referrer = '' THEN 'Direct'
+                  ELSE 'Other'
+              END AS channel
+          FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT)
+          WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
+            AND td_client_id IS NOT NULL
       ),
       channel_counts AS (
-        SELECT 
-          channel,
-          COUNT(DISTINCT td_client_id) * 50 as visitors  -- Scale up from 2% sample
-        FROM channel_data
-        GROUP BY channel
-      ),
-      total_count AS (
-        SELECT SUM(visitors) as total_visitors FROM channel_counts
+          SELECT 
+              channel,
+              COUNT(DISTINCT td_client_id) * 50 AS visitors
+          FROM channel_data
+          GROUP BY channel
       )
       SELECT TOP 10
-        cc.channel,
-        cc.visitors,
-        ROUND((cc.visitors * 100.0 / tc.total_visitors), 1) as percentage
-      FROM channel_counts cc, total_count tc
-      WHERE cc.visitors > 0
-      ORDER BY cc.visitors DESC
+          channel,
+          visitors,
+          ROUND(visitors * 100.0 / SUM(visitors) OVER (), 1) AS percentage
+      FROM channel_counts
+      WHERE visitors > 0
+      ORDER BY visitors DESC
     `;
     
-        console.log(`✅ Found ${result.length} traffic channels`);
         
         return {
           data: result.map(row => ({
@@ -126,46 +118,50 @@ async function getUniqueVisitorsByChannel(fromDate, toDate) {
 async function getLoggedInVsLoggedOut(fromDate, toDate) {
   // DIRECT DATABASE QUERY (Caching disabled for reliability)
   try {
-        console.log(`🔍 Getting login status distribution from ${fromDate} to ${toDate}`);
         
         // Convert dates to Unix timestamps
         const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
         const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
         
-        // Login status detection and counting
+        // OPTIMIZED: SQL Engineer's optimized query for Log In & Log Out Users
         const prisma = await getPrisma();
         const result = await prisma.$queryRaw`
-      WITH login_status AS (
-        SELECT
-          td_client_id,
-          CASE
-            WHEN LOWER(user_userinfo_loginstatus) LIKE '%login%' THEN 'logged_in'
-            WHEN LOWER(user_userinfo_loginstatus_1) LIKE '%login%' THEN 'logged_in'
-            WHEN LOWER(td_url) LIKE '%/signup.html%' THEN 'logged_in'
-            WHEN user_userinfo_memberid IS NOT NULL OR user_userinfo_memberid_1 IS NOT NULL THEN 'logged_in'
-            WHEN user_userinfo_loginstatus IS NULL AND user_userinfo_loginstatus_1 IS NULL THEN 'logged_out'
-            ELSE 'logged_out'
-          END as login_status
-        FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT) WITH (INDEX(idx_pageviews_part_client_id))
-        WHERE time >= ${fromTimestamp}
-          AND time <= ${toTimestamp}
-          AND td_client_id IS NOT NULL
+      WITH login_data AS (
+          SELECT
+              td_client_id,
+              LOWER(ISNULL(user_userinfo_loginstatus, '')) AS ls1,
+              LOWER(ISNULL(user_userinfo_loginstatus_1, '')) AS ls2,
+              LOWER(ISNULL(td_url, '')) AS lurl,
+              user_userinfo_memberid AS mid1,
+              user_userinfo_memberid_1 AS mid2
+          FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT)
+          WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
+            AND td_client_id IS NOT NULL
+      ),
+      login_status AS (
+          SELECT
+              td_client_id,
+              CASE
+                  WHEN ls1 LIKE '%login%' OR ls2 LIKE '%login%' THEN 'logged_in'
+                  WHEN lurl LIKE '%/signup.html%' THEN 'logged_in'
+                  WHEN mid1 IS NOT NULL OR mid2 IS NOT NULL THEN 'logged_in'
+                  ELSE 'logged_out'
+              END AS login_status
+          FROM login_data
       ),
       status_summary AS (
-        SELECT
-          login_status,
-          COUNT(DISTINCT td_client_id) * 50 as user_count  -- Scale up from 2% sample
-        FROM login_status
-        GROUP BY login_status
-      ),
-      total_users AS (
-        SELECT SUM(user_count) as total FROM status_summary
+          SELECT
+              login_status,
+              COUNT(DISTINCT td_client_id) * 50 AS user_count
+          FROM login_status
+          GROUP BY login_status
       )
       SELECT
-        ss.login_status,
-        ss.user_count as count,
-        ROUND((ss.user_count * 100.0 / tu.total), 1) as percentage
-      FROM status_summary ss, total_users tu
+          login_status,
+          user_count AS count,
+          ROUND(user_count * 100.0 / SUM(user_count) OVER (), 1) AS percentage
+      FROM status_summary
+      ORDER BY user_count DESC
     `;
     
     // Format response for donut chart
@@ -188,7 +184,6 @@ async function getLoggedInVsLoggedOut(fromDate, toDate) {
       }
     });
     
-    console.log(`✅ Login status analysis completed`);
     
         return {
           data: formattedResult,

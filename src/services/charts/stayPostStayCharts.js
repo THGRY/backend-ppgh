@@ -25,14 +25,13 @@ async function getPrisma() {
  */
 async function getNPSScores(fromDate, toDate) {
   try {
-    console.log(`⚡ Getting ULTRA-FAST NPS scores from ${fromDate} to ${toDate}`);
     
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
     const prisma = await getPrisma();
     
-    // ULTRA-FAST: Single query with 2% sampling, no extended ranges, use _1 fields
+    // OPTIMIZED: SQL Engineer's optimized query for NPS Score
     const result = await prisma.$queryRaw`
       SELECT
         DATEPART(QUARTER, CAST(DATEADD(SECOND, CAST([time] AS BIGINT), '1970-01-01') AS DATE)) as quarter,
@@ -42,8 +41,7 @@ async function getNPSScores(fromDate, toDate) {
                               AND booking_transaction_confirmationno_1 != '' 
                               THEN td_client_id END) * 50 as estimated_satisfied
       FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT)
-      WHERE time >= ${fromTimestamp}
-        AND time <= ${toTimestamp}
+      WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
         AND td_client_id IS NOT NULL
       GROUP BY YEAR(CAST(DATEADD(SECOND, CAST([time] AS BIGINT), '1970-01-01') AS DATE)), 
                DATEPART(QUARTER, CAST(DATEADD(SECOND, CAST([time] AS BIGINT), '1970-01-01') AS DATE))
@@ -51,7 +49,6 @@ async function getNPSScores(fromDate, toDate) {
       ORDER BY year, quarter
     `;
     
-    console.log(`⚡ ULTRA-FAST NPS completed with ${result.length} quarters`);
     
     return {
       data: result.map(row => ({
@@ -84,14 +81,13 @@ async function getNPSScores(fromDate, toDate) {
  */
 async function getRebookingRates(fromDate, toDate) {
   try {
-    console.log(`⚡ Getting ULTRA-FAST re-booking rates from ${fromDate} to ${toDate}`);
     
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
     const prisma = await getPrisma();
     
-    // ULTRA-FAST: Single query, 2% sampling, no extended ranges, use _1 fields
+    // OPTIMIZED: SQL Engineer's optimized query for Rebooking Rate
     const result = await prisma.$queryRaw`
       WITH customer_bookings AS (
         SELECT
@@ -100,8 +96,7 @@ async function getRebookingRates(fromDate, toDate) {
           td_client_id,
           COUNT(DISTINCT booking_transaction_confirmationno_1) as booking_count
         FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT)
-        WHERE time >= ${fromTimestamp}
-          AND time <= ${toTimestamp}
+        WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
           AND booking_transaction_confirmationno_1 IS NOT NULL
           AND booking_transaction_confirmationno_1 != ''
           AND td_client_id IS NOT NULL
@@ -128,7 +123,6 @@ async function getRebookingRates(fromDate, toDate) {
       ORDER BY year, quarter
     `;
     
-    console.log(`⚡ ULTRA-FAST re-booking completed with ${result.length} quarters`);
     
     return {
       data: result.map(row => ({

@@ -19,7 +19,6 @@ async function getPrisma() {
  */
 async function getFastNPSScores(fromDate, toDate) {
   try {
-    console.log(`⚡ Getting ULTRA-FAST NPS scores from ${fromDate} to ${toDate}`);
     
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
@@ -56,7 +55,6 @@ async function getFastNPSScores(fromDate, toDate) {
       ORDER BY year, quarter
     `;
     
-    console.log(`⚡ ULTRA-FAST NPS completed with ${result.length} quarters`);
     
     return {
       data: result.map(row => ({
@@ -88,7 +86,6 @@ async function getFastNPSScores(fromDate, toDate) {
  */
 async function getFastRebookingRates(fromDate, toDate) {
   try {
-    console.log(`⚡ Getting ULTRA-FAST re-booking rates from ${fromDate} to ${toDate}`);
     
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
@@ -136,7 +133,6 @@ async function getFastRebookingRates(fromDate, toDate) {
       ORDER BY year, quarter
     `;
     
-    console.log(`⚡ ULTRA-FAST re-booking completed with ${result.length} quarters`);
     
     return {
       data: result.map(row => ({

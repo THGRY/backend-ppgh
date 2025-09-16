@@ -1,6 +1,4 @@
 const { PrismaClient } = require('../generated/prisma');
-const cacheService = require('./advancedCacheService');
-const smartCacheService = require('./smartCacheService');
 const logger = require('../utils/logger');
 
 // Initialize Prisma client with CONNECTION POOLING for optimal analytics performance
@@ -23,8 +21,8 @@ async function initializePrisma() {
       },
       // Performance optimizations for heavy analytical queries
       transactionOptions: {
-        timeout: 45000, // 45 seconds for complex analytical queries
-        maxWait: 10000,  // 10 seconds max wait for connection
+        timeout: 60000, // 60 seconds for complex analytical queries (increased for larger pool)
+        maxWait: 15000,  // 15 seconds max wait for connection (increased for larger pool)
       },
       // Enhanced connection pooling for Azure SQL Server
       // Note: Connection pool settings are configured in DATABASE_URL
@@ -58,7 +56,7 @@ async function initializePrisma() {
     
     logger.success('Prisma client initialized with optimized connection pooling for analytics workloads');
     logger.info('Shared connection pool will be used across all chart services');
-    logger.debug('Connection Pool Settings: Max Connections: 20, Pool Timeout: 45s, Query Timeout: 120s');
+    logger.debug('Connection Pool Settings: Max Connections: 35, Pool Timeout: 60s, Query Timeout: 120s');
     
     isInitialized = true;
     return prisma;
@@ -87,12 +85,10 @@ function getPrisma() {
 async function testDatabaseConnection(retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`🔍 Testing database connection (attempt ${attempt}/${retries})...`);
       
       // Simple connection test query
       await prisma.$queryRaw`SELECT 1 as test`;
       
-      console.log('✅ Database connection successful');
       return true;
       
     } catch (error) {
@@ -105,7 +101,6 @@ async function testDatabaseConnection(retries = 3) {
       
       // Wait before retry (exponential backoff)
       const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-      console.log(`⏳ Waiting ${waitTime/1000}s before retry...`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
@@ -123,23 +118,15 @@ async function checkConnectionHealth() {
     // Check database health
     await prisma.$queryRaw`SELECT 1 as health_check`;
     
-    // Check cache health
-    const cacheHealth = await cacheService.healthCheck();
-    
     return { 
       database: { healthy: true, timestamp: new Date().toISOString() },
-      cache: cacheHealth,
       overall: { healthy: true, timestamp: new Date().toISOString() }
     };
   } catch (error) {
     console.error('❌ Connection health check failed:', error);
     
-    // Still check cache even if database fails
-    const cacheHealth = await cacheService.healthCheck();
-    
     return { 
       database: { healthy: false, error: error.message, timestamp: new Date().toISOString() },
-      cache: cacheHealth,
       overall: { healthy: false, error: error.message, timestamp: new Date().toISOString() }
     };
   }
@@ -169,14 +156,19 @@ async function getL1UniqueVisitors(fromDate, toDate) {
         const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
         const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
         
-        // Use raw SQL query since pageviews table is ignored by Prisma
+        // OPTIMIZED: Use WITH clause for better performance
         const result = await prisma.$queryRaw`
-          SELECT COUNT(DISTINCT td_client_id) as unique_visitors
-          FROM preprocessed.pageviews_partitioned
-          WHERE time >= ${fromTimestamp}
-            AND time <= ${toTimestamp}
-            AND td_client_id IS NOT NULL
-            AND td_client_id != ''
+          WITH filtered_pageviews AS (
+              SELECT 
+                  td_client_id
+              FROM preprocessed.pageviews_partitioned
+              WHERE 
+                  td_client_id IS NOT NULL
+                  AND td_client_id != ''
+                  AND time BETWEEN ${fromTimestamp} AND ${toTimestamp}
+          )
+          SELECT COUNT(DISTINCT td_client_id) AS unique_visitors
+          FROM filtered_pageviews
         `;
         
         const uniqueVisitors = Number(result[0].unique_visitors);
@@ -208,64 +200,61 @@ async function getL1UniqueVisitors(fromDate, toDate) {
  * Performance: Date filtering + non-null confirmations
  */
 async function getL1TotalBookings(fromDate, toDate) {
-  // SMART CACHING: Intelligent date-range caching with chunk aggregation
-  return await smartCacheService.smartCacheWithFallback(
-    'metrics',
-    'total_bookings',
-    fromDate,
-    toDate,
-    async () => {
-      try {
-        console.log(`🔍 Getting total bookings from ${fromDate} to ${toDate}`);
+  // DIRECT DATABASE QUERY (Caching removed for data accuracy)
+  try {
+    // Ensure Prisma is initialized
+    await prismaPromise;
+    
+    logger.query(`Getting total bookings from ${fromDate} to ${toDate}`);
     
     // Convert dates to Unix timestamps
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
-    // Use raw SQL query to get unique bookings from both confirmation columns
+    // OPTIMIZED: Use CROSS APPLY for better performance
     const result = await prisma.$queryRaw`
-      SELECT COUNT(DISTINCT confirmation_no) as total_bookings
-      FROM (
-          SELECT booking_transaction_confirmationno as confirmation_no
+      WITH filtered AS (
+          SELECT booking_transaction_confirmationno, booking_transaction_confirmationno_1
           FROM preprocessed.pageviews_partitioned
-          WHERE time >= ${fromTimestamp}
-            AND time <= ${toTimestamp}
-            AND booking_transaction_confirmationno IS NOT NULL
-            AND booking_transaction_confirmationno != ''
-
-          UNION
-
-          SELECT booking_transaction_confirmationno_1 as confirmation_no
-          FROM preprocessed.pageviews_partitioned
-          WHERE time >= ${fromTimestamp}
-            AND time <= ${toTimestamp}
-            AND booking_transaction_confirmationno_1 IS NOT NULL
-            AND booking_transaction_confirmationno_1 != ''
-      ) as all_confirmations
+          WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
+            AND (
+                  (booking_transaction_confirmationno IS NOT NULL AND booking_transaction_confirmationno != '')
+               OR (booking_transaction_confirmationno_1 IS NOT NULL AND booking_transaction_confirmationno_1 != '')
+            )
+      ),
+      unified AS (
+          SELECT v.confirmation_no
+          FROM filtered
+          CROSS APPLY (VALUES
+              (booking_transaction_confirmationno),
+              (booking_transaction_confirmationno_1)
+          ) AS v(confirmation_no)
+          WHERE v.confirmation_no IS NOT NULL AND v.confirmation_no != ''
+      )
+      SELECT COUNT(DISTINCT confirmation_no) AS total_bookings
+      FROM unified
     `;
     
     const totalBookings = Number(result[0].total_bookings);
     
-    console.log(`✅ Found ${totalBookings} total bookings`);
+    logger.success(`Found ${totalBookings} total bookings`);
     
-        return {
-          total_bookings: totalBookings,
-          success: true,
-          query_time: new Date().toISOString(),
-          cached: false
-        };
+    return {
+      total_bookings: totalBookings,
+      success: true,
+      query_time: new Date().toISOString(),
+      cached: false
+    };
         
-      } catch (error) {
-        console.error('❌ Error in getL1TotalBookings:', error);
-        return {
-          total_bookings: 0,
-          success: false,
-          error: error.message,
-          cached: false
-        };
-      }
-    }
-  );
+  } catch (error) {
+    logger.error('Error in getL1TotalBookings:', error);
+    return {
+      total_bookings: 0,
+      success: false,
+      error: error.message,
+      cached: false
+    };
+  }
 }
 
 /**
@@ -275,21 +264,18 @@ async function getL1TotalBookings(fromDate, toDate) {
  * Performance: Date filtering + null handling + TRY_CAST for nvarchar to float
  */
 async function getL1RoomNights(fromDate, toDate) {
-  // SMART CACHING: Intelligent date-range caching with chunk aggregation
-  return await smartCacheService.smartCacheWithFallback(
-    'metrics',
-    'room_nights',
-    fromDate,
-    toDate,
-    async () => {
-      try {
-        console.log(`🔍 Getting room nights from ${fromDate} to ${toDate}`);
+  // DIRECT DATABASE QUERY (Caching removed for data accuracy)
+  try {
+    // Ensure Prisma is initialized
+    await prismaPromise;
+    
+    logger.query(`Getting room nights from ${fromDate} to ${toDate}`);
     
     // Convert dates to Unix timestamps
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
-    // Use raw SQL query to sum room nights from both columns
+    // OPTIMIZED: Use BETWEEN clause for better performance
     const result = await prisma.$queryRaw`
       SELECT
         SUM(
@@ -297,8 +283,7 @@ async function getL1RoomNights(fromDate, toDate) {
           ISNULL(TRY_CAST(booking_bookingwidget_totalnightstay_1 AS FLOAT), 0)
         ) as room_nights
       FROM preprocessed.pageviews_partitioned
-      WHERE time >= ${fromTimestamp}
-        AND time <= ${toTimestamp}
+      WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
         AND (
           booking_bookingwidget_totalnightstay IS NOT NULL OR
           booking_bookingwidget_totalnightstay_1 IS NOT NULL
@@ -307,26 +292,24 @@ async function getL1RoomNights(fromDate, toDate) {
     
     const roomNights = Number(result[0].room_nights) || 0;
     
-    console.log(`✅ Found ${roomNights} room nights`);
+    logger.success(`Found ${roomNights} room nights`);
     
-        return {
-          room_nights: roomNights,
-          success: true,
-          query_time: new Date().toISOString(),
-          cached: false
-        };
+    return {
+      room_nights: roomNights,
+      success: true,
+      query_time: new Date().toISOString(),
+      cached: false
+    };
         
-      } catch (error) {
-        console.error('❌ Error in getL1RoomNights:', error);
-        return {
-          room_nights: 0,
-          success: false,
-          error: error.message,
-          cached: false
-        };
-      }
-    }
-  );
+  } catch (error) {
+    logger.error('Error in getL1RoomNights:', error);
+    return {
+      room_nights: 0,
+      success: false,
+      error: error.message,
+      cached: false
+    };
+  }
 }
 
 /**
@@ -336,91 +319,78 @@ async function getL1RoomNights(fromDate, toDate) {
  * Complexity: HIGH - Multi-currency with exchange rate lookup from pythia_db.currencies
  */
 async function getL1TotalRevenue(fromDate, toDate) {
-  // SMART CACHING: Intelligent date-range caching with chunk aggregation
-  return await smartCacheService.smartCacheWithFallback(
-    'metrics',
-    'total_revenue',
-    fromDate,
-    toDate,
-    async () => {
-      try {
-        console.log(`🔍 Getting total revenue from ${fromDate} to ${toDate}`);
+  // DIRECT DATABASE QUERY (Caching removed for data accuracy)
+  try {
+    // Ensure Prisma is initialized
+    await prismaPromise;
+    
+    logger.query(`Getting total revenue from ${fromDate} to ${toDate}`);
     
     // Convert dates to Unix timestamps
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
-    // Complex multi-currency revenue calculation with exchange rates
+    // OPTIMIZED: Use CROSS APPLY for better performance
     const result = await prisma.$queryRaw`
       WITH payment_data AS (
-        SELECT
-          TRY_CAST(booking_transaction_totalpayment AS FLOAT) as payment_amount,
-          booking_transaction_currencytype as currency_code
-        FROM preprocessed.pageviews_partitioned
-        WHERE time >= ${fromTimestamp}
-          AND time <= ${toTimestamp}
-          AND booking_transaction_totalpayment IS NOT NULL
-          AND booking_transaction_totalpayment != ''
-          AND TRY_CAST(booking_transaction_totalpayment AS FLOAT) > 0
-
-        UNION ALL
-
-        SELECT
-          TRY_CAST(booking_transaction_totalpayment_1 AS FLOAT) as payment_amount,
-          booking_transaction_currencytype_1 as currency_code
-        FROM preprocessed.pageviews_partitioned
-        WHERE time >= ${fromTimestamp}
-          AND time <= ${toTimestamp}
-          AND booking_transaction_totalpayment_1 IS NOT NULL
-          AND booking_transaction_totalpayment_1 != ''
-          AND TRY_CAST(booking_transaction_totalpayment_1 AS FLOAT) > 0
+          SELECT
+              TRY_CAST(v.payment AS FLOAT) AS payment_amount,
+              v.currency_code
+          FROM preprocessed.pageviews_partitioned p
+          CROSS APPLY (VALUES
+              (p.booking_transaction_totalpayment, p.booking_transaction_currencytype),
+              (p.booking_transaction_totalpayment_1, p.booking_transaction_currencytype_1)
+          ) AS v(payment, currency_code)
+          WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
+            AND v.payment IS NOT NULL
+            AND v.payment != ''
+            AND TRY_CAST(v.payment AS FLOAT) > 0
       )
       SELECT
-        SUM(
-          payment_data.payment_amount *
-          CASE
-            WHEN UPPER(payment_data.currency_code) = 'USD' THEN 1.0
-            ELSE COALESCE(c.exchange_rate_to_usd, 1.0)
-          END
-        ) as total_revenue_usd
+          SUM(
+              payment_data.payment_amount *
+              CASE
+                  WHEN UPPER(payment_data.currency_code) = 'USD' THEN 1.0
+                  ELSE COALESCE(c.exchange_rate_to_usd, 1.0)
+              END
+          ) AS total_revenue_usd
       FROM payment_data
-      LEFT JOIN pythia_db.currencies c ON UPPER(c.code) = UPPER(payment_data.currency_code)
+      LEFT JOIN pythia_db.currencies c
+          ON UPPER(c.code) = UPPER(payment_data.currency_code)
       WHERE payment_data.payment_amount IS NOT NULL
     `;
     
     const totalRevenue = Number(result[0].total_revenue_usd) || 0;
     
-    console.log(`✅ Found $${totalRevenue.toLocaleString()} total revenue (USD)`);
+    logger.success(`Found $${totalRevenue.toLocaleString()} total revenue (USD)`);
     
-        return {
-          total_revenue: totalRevenue,
-          success: true,
-          query_time: new Date().toISOString(),
-          cached: false
-        };
+    return {
+      total_revenue: totalRevenue,
+      success: true,
+      query_time: new Date().toISOString(),
+      cached: false
+    };
         
-      } catch (error) {
-        console.error('❌ Error in getL1TotalRevenue:', error);
-        return {
-          total_revenue: 0,
-          success: false,
-          error: error.message,
-          cached: false
-        };
-      }
-    }
-  );
+  } catch (error) {
+    logger.error('Error in getL1TotalRevenue:', error);
+    return {
+      total_revenue: 0,
+      success: false,
+      error: error.message,
+      cached: false
+    };
+  }
 }
 
 /**
  * METRIC 5: AVERAGE BOOKING VALUE (ABV)
  * Business Logic: Revenue per booking (Total Revenue ÷ Total Bookings)
- * Database Logic: Efficient approach using cached results from other functions
+ * Database Logic: Efficient approach using results from other functions
  * Performance: Uses results from getL1TotalRevenue and getL1TotalBookings
  */
 async function getL1ABV(fromDate, toDate) {
   try {
-    console.log(`🔍 Getting ABV from ${fromDate} to ${toDate}`);
+    logger.query(`Getting ABV from ${fromDate} to ${toDate}`);
     
     // Get revenue and bookings in parallel for efficiency
     const [revenueResult, bookingsResult] = await Promise.all([
@@ -438,7 +408,7 @@ async function getL1ABV(fromDate, toDate) {
     // Calculate ABV with zero division protection
     const abv = totalBookings > 0 ? totalRevenue / totalBookings : 0;
     
-    console.log(`✅ Calculated ABV: $${abv.toFixed(2)} (Revenue: $${totalRevenue.toLocaleString()}, Bookings: ${totalBookings})`);
+    logger.success(`Calculated ABV: $${abv.toFixed(2)} (Revenue: $${totalRevenue.toLocaleString()}, Bookings: ${totalBookings})`);
     
     return {
       abv: Math.round(abv * 100) / 100, // Round to 2 decimal places
@@ -451,7 +421,7 @@ async function getL1ABV(fromDate, toDate) {
     };
     
   } catch (error) {
-    console.error('❌ Error in getL1ABV:', error);
+    logger.error('Error in getL1ABV:', error);
     return {
       abv: 0,
       success: false,

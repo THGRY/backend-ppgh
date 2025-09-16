@@ -10,6 +10,9 @@ const {
 // Import unlimited rate limiter configuration
 const { createRateLimiter } = require('../middleware/rateLimiter');
 
+// Import dynamic scaling middleware
+const { withDynamicScaling } = require('../middleware/dynamicScaling');
+
 // Import chart services
 const {
   getL1AwarenessEngagementData,
@@ -70,7 +73,6 @@ function validateDateParams(req, res, next) {
   
   // Log large queries for monitoring (but don't block them)
   if (daysDiff > 365) {
-    console.log(`📊 Large date range requested: ${daysDiff} days (${from} to ${to})`);
   }
   
   // Optional: Add warning header for very large ranges
@@ -91,29 +93,39 @@ router.get('/l1-summary-data', validateDateParams, async (req, res) => {
     const { from, to } = req.query;
     const startTime = Date.now();
     
-    console.log(`🔍 API Request: L1 Summary Data for ${from} to ${to}`);
     
-    // Get all 5 key metrics in parallel for maximum performance
+    // Use dynamic scaling for this heavy operation (5 parallel queries)
+    const queryInfo = req.scalingInfo?.queryInfo || { 
+      endpoint: 'l1-summary-data', 
+      fromDate: from, 
+      toDate: to 
+    };
+    
+    const results = await withDynamicScaling(queryInfo, async () => {
+      // Get all 5 key metrics in parallel for maximum performance
+      return await Promise.all([
+        getL1UniqueVisitors(from, to),
+        getL1TotalBookings(from, to),
+        getL1RoomNights(from, to),
+        getL1TotalRevenue(from, to),
+        getL1ABV(from, to)
+      ]);
+    });
+    
     const [
       uniqueVisitorsResult, 
       totalBookingsResult, 
       roomNightsResult, 
       totalRevenueResult, 
       abvResult
-    ] = await Promise.all([
-      getL1UniqueVisitors(from, to),
-      getL1TotalBookings(from, to),
-      getL1RoomNights(from, to),
-      getL1TotalRevenue(from, to),
-      getL1ABV(from, to)
-    ]);
+    ] = results;
     
     const endTime = Date.now();
     const responseTime = endTime - startTime;
     
     // Check if all queries succeeded - handle null results from cache misses
-    const results = [uniqueVisitorsResult, totalBookingsResult, roomNightsResult, totalRevenueResult, abvResult].filter(result => result !== null);
-    const failedResults = results.filter(result => result && !result.success);
+    const allResults = [uniqueVisitorsResult, totalBookingsResult, roomNightsResult, totalRevenueResult, abvResult].filter(result => result !== null);
+    const failedResults = allResults.filter(result => result && !result.success);
     
     if (failedResults.length > 0) {
       return res.status(500).json({
@@ -144,7 +156,7 @@ router.get('/l1-summary-data', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - All 5 metrics completed successfully`);
+    console.log(`API: l1-summary-data ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-summary-data:', error);
@@ -166,7 +178,6 @@ router.get('/l1-unique-visitors', validateDateParams, async (req, res) => {
     const { from, to } = req.query;
     const startTime = Date.now();
     
-    console.log(`🔍 API Request: L1 Unique Visitors for ${from} to ${to}`);
     
     const result = await getL1UniqueVisitors(from, to);
     const responseTime = Date.now() - startTime;
@@ -189,7 +200,7 @@ router.get('/l1-unique-visitors', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Unique Visitors: ${result.unique_visitors}`);
+    console.log(`API: l1-unique-visitors ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-unique-visitors:', error);
@@ -211,7 +222,6 @@ router.get('/l1-total-bookings', validateDateParams, async (req, res) => {
     const { from, to } = req.query;
     const startTime = Date.now();
     
-    console.log(`🔍 API Request: L1 Total Bookings for ${from} to ${to}`);
     
     const result = await getL1TotalBookings(from, to);
     const responseTime = Date.now() - startTime;
@@ -234,7 +244,7 @@ router.get('/l1-total-bookings', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Total Bookings: ${result.total_bookings}`);
+    console.log(`API: l1-total-bookings ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-total-bookings:', error);
@@ -256,7 +266,6 @@ router.get('/l1-room-nights', validateDateParams, async (req, res) => {
     const { from, to } = req.query;
     const startTime = Date.now();
     
-    console.log(`🔍 API Request: L1 Room Nights for ${from} to ${to}`);
     
     const result = await getL1RoomNights(from, to);
     const responseTime = Date.now() - startTime;
@@ -279,7 +288,7 @@ router.get('/l1-room-nights', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Room Nights: ${result.room_nights}`);
+    console.log(`API: l1-room-nights ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-room-nights:', error);
@@ -301,7 +310,6 @@ router.get('/l1-total-revenue', validateDateParams, async (req, res) => {
     const { from, to } = req.query;
     const startTime = Date.now();
     
-    console.log(`🔍 API Request: L1 Total Revenue for ${from} to ${to}`);
     
     const result = await getL1TotalRevenue(from, to);
     const responseTime = Date.now() - startTime;
@@ -325,7 +333,7 @@ router.get('/l1-total-revenue', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Total Revenue: $${result.total_revenue.toLocaleString()}`);
+    console.log(`API: l1-total-revenue ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-total-revenue:', error);
@@ -347,7 +355,6 @@ router.get('/l1-abv', validateDateParams, async (req, res) => {
     const { from, to } = req.query;
     const startTime = Date.now();
     
-    console.log(`🔍 API Request: L1 ABV for ${from} to ${to}`);
     
     const result = await getL1ABV(from, to);
     const responseTime = Date.now() - startTime;
@@ -372,7 +379,7 @@ router.get('/l1-abv', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - ABV: $${result.abv}`);
+    console.log(`API: l1-abv ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-abv:', error);
@@ -399,7 +406,6 @@ router.get('/l1-awareness-engagement', validateDateParams, async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     
-    console.log(`🔍 API Request: L1 Awareness & Engagement for ${from} to ${to}`);
     
     const result = await getL1AwarenessEngagementData(from, to);
     const responseTime = Date.now() - startTime;
@@ -424,7 +430,7 @@ router.get('/l1-awareness-engagement', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Awareness & Engagement charts loaded`);
+    console.log(`API: l1-awareness-engagement ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-awareness-engagement:', error);
@@ -451,7 +457,6 @@ router.get('/l1-conversions', validateDateParams, async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     
-    console.log(`🔍 API Request: L1 Conversions for ${from} to ${to}`);
     
     const result = await getL1ConversionsData(from, to);
     const responseTime = Date.now() - startTime;
@@ -476,7 +481,7 @@ router.get('/l1-conversions', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Conversions charts loaded`);
+    console.log(`API: l1-conversions ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-conversions:', error);
@@ -503,7 +508,6 @@ router.get('/l1-stay-poststay', validateDateParams, async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     
-    console.log(`🔍 API Request: L1 Stay & Post-Stay for ${from} to ${to}`);
     
     const result = await getL1StayPostStayData(from, to);
     const responseTime = Date.now() - startTime;
@@ -528,7 +532,7 @@ router.get('/l1-stay-poststay', validateDateParams, async (req, res) => {
       }
     });
     
-    console.log(`✅ API Response: ${responseTime}ms - Stay & Post-Stay charts loaded`);
+    console.log(`API: l1-stay-poststay ${responseTime}ms`);
     
   } catch (error) {
     console.error('❌ API Error in l1-stay-poststay:', error);

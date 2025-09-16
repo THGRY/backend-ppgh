@@ -15,11 +15,11 @@ async function getPrisma() {
  */
 async function getBookingFunnel(fromDate, toDate) {
   try {
-    console.log(`🚀 Getting OPTIMIZED booking funnel from ${fromDate} to ${toDate}`);
     
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
+    // OPTIMIZED: SQL Engineer's optimized query for Booking Funnel
     const prisma = await getPrisma();
     const result = await prisma.$queryRaw`
       SELECT 
@@ -38,8 +38,7 @@ async function getBookingFunnel(fromDate, toDate) {
                              AND booking_transaction_confirmationno_1 != '' 
                              THEN td_client_id END) as confirmed_users
       FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT)
-      WHERE time >= ${fromTimestamp}
-        AND time <= ${toTimestamp}
+      WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
         AND td_client_id IS NOT NULL
     `;
     
@@ -80,7 +79,6 @@ async function getBookingFunnel(fromDate, toDate) {
       }
     ];
     
-    console.log(`✅ Booking funnel analysis completed with 5 stages`);
     
     return {
       data: funnelStages,
@@ -109,11 +107,11 @@ async function getBookingFunnel(fromDate, toDate) {
  */
 async function getBookingRevenueTrends(fromDate, toDate) {
   try {
-    console.log(`🚀 Getting OPTIMIZED revenue trends from ${fromDate} to ${toDate}`);
     
     const fromTimestamp = Math.floor(new Date(fromDate).getTime() / 1000);
     const toTimestamp = Math.floor(new Date(toDate).getTime() / 1000);
     
+    // OPTIMIZED: SQL Engineer's optimized query for Booking Revenue
     const prisma = await getPrisma();
     const result = await prisma.$queryRaw`
       SELECT
@@ -122,8 +120,7 @@ async function getBookingRevenueTrends(fromDate, toDate) {
         SUM(TRY_CAST(booking_transaction_totalpayment_1 AS FLOAT)) as revenue,
         COUNT(DISTINCT booking_transaction_confirmationno_1) as bookings
       FROM preprocessed.pageviews_partitioned TABLESAMPLE (2 PERCENT)
-      WHERE time >= ${fromTimestamp}
-        AND time <= ${toTimestamp}
+      WHERE time BETWEEN ${fromTimestamp} AND ${toTimestamp}
         AND booking_transaction_confirmationno_1 IS NOT NULL
         AND booking_transaction_totalpayment_1 IS NOT NULL
         AND TRY_CAST(booking_transaction_totalpayment_1 AS FLOAT) > 0
@@ -145,7 +142,6 @@ async function getBookingRevenueTrends(fromDate, toDate) {
       bookings: Math.round(Number(row.bookings || 0) * scaleFactor)
     }));
     
-    console.log(`✅ Revenue trends analysis completed with ${trendData.length} data points`);
     
     return {
       data: trendData,

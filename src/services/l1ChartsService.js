@@ -33,7 +33,6 @@ const {
  */
 async function getL1AwarenessEngagementData(fromDate, toDate) {
   try {
-    console.log(`🔍 Getting L1 Awareness & Engagement data from ${fromDate} to ${toDate}`);
     
     // Get both charts data in parallel for performance
     const [visitorsChannelResult, loginStatusResult] = await Promise.all([
@@ -93,7 +92,6 @@ async function getL1AwarenessEngagementData(fromDate, toDate) {
  */
 async function getL1ConversionsData(fromDate, toDate) {
   try {
-    console.log(`🔍 Getting L1 Conversions data from ${fromDate} to ${toDate}`);
     
     // Get both charts data in parallel for performance
     const [bookingFunnelResult, revenueTrendsResult] = await Promise.all([
@@ -144,7 +142,6 @@ async function getL1ConversionsData(fromDate, toDate) {
  */
 async function getL1StayPostStayData(fromDate, toDate) {
   try {
-    console.log(`🔍 Getting L1 Stay & Post-Stay data from ${fromDate} to ${toDate}`);
     
     // Get both charts data in parallel for performance
     const [npsScoresResult, rebookingRatesResult] = await Promise.all([

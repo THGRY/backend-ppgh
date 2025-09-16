@@ -1,0 +1,401 @@
+{
+  "timestamp": "2025-09-11T21:28:27.927Z",
+  "analysis": "Complete Dashboard Optimization Analysis",
+  "scope": "All APIs: 5 Key Metrics + 6 Chart APIs (Awareness, Conversions, Stay/Post-Stay)",
+  "sections": {
+    "currentPerformance": {
+      "testDateRange": {
+        "from": 1719792000,
+        "to": 1720396799
+      },
+      "performanceResults": {
+        "keyMetrics": {
+          "uniqueVisitors": {
+            "queryTime": 2356,
+            "resultCount": 1,
+            "performance": "GOOD",
+            "requiredIndexes": [
+              "td_client_id + time"
+            ],
+            "api": "/l1-unique-visitors",
+            "sampleResult": [
+              {
+                "unique_visitors": 53107
+              }
+            ]
+          },
+          "totalBookings": {
+            "queryTime": 7451,
+            "resultCount": 1,
+            "performance": "SLOW",
+            "requiredIndexes": [
+              "booking_transaction_confirmationno + time",
+              "booking_transaction_confirmationno_1 + time"
+            ],
+            "api": "/l1-total-bookings",
+            "sampleResult": [
+              {
+                "total_bookings": 2713
+              }
+            ]
+          },
+          "roomNights": {
+            "queryTime": 730,
+            "resultCount": 1,
+            "performance": "EXCELLENT",
+            "requiredIndexes": [
+              "booking_bookingwidget_totalnightstay + time"
+            ],
+            "api": "/l1-room-nights",
+            "sampleResult": [
+              {
+                "room_nights": 263412
+              }
+            ]
+          },
+          "totalRevenue": {
+            "queryTime": 593,
+            "resultCount": 1,
+            "performance": "EXCELLENT",
+            "requiredIndexes": [
+              "booking_transaction_totalpayment + time"
+            ],
+            "api": "/l1-total-revenue",
+            "sampleResult": [
+              {
+                "total_revenue": null
+              }
+            ]
+          }
+        },
+        "awarenessEngagement": {
+          "visitorsByChannel": {
+            "queryTime": 1805,
+            "resultCount": 2,
+            "performance": "GOOD",
+            "requiredIndexes": [
+              "utm_source + time",
+              "td_client_id + time"
+            ],
+            "api": "/l1-awareness-engagement",
+            "sampleResult": [
+              {
+                "channel": "Direct",
+                "visitors": 53104
+              },
+              {
+                "channel": "google",
+                "visitors": 8
+              }
+            ]
+          },
+          "loggedInStatus": {
+            "queryTime": 79503,
+            "resultCount": 1,
+            "performance": "CRITICAL",
+            "requiredIndexes": [
+              "user_userinfo_loginstatus + time",
+              "td_client_id + time"
+            ],
+            "api": "/l1-awareness-engagement",
+            "sampleResult": [
+              {
+                "login_status": "Logged Out",
+                "user_count": 53107
+              }
+            ]
+          }
+        },
+        "conversions": {
+          "bookingFunnel": {
+            "queryTime": 5681,
+            "resultCount": 1,
+            "performance": "SLOW",
+            "requiredIndexes": [
+              "td_path + time",
+              "td_client_id + time"
+            ],
+            "api": "/l1-conversions",
+            "sampleResult": [
+              {
+                "stage": "Search",
+                "users": 16591
+              }
+            ]
+          },
+          "revenueTrends": {
+            "queryTime": 868,
+            "resultCount": 7,
+            "performance": "EXCELLENT",
+            "requiredIndexes": [
+              "time (for date grouping)",
+              "booking_transaction_confirmationno + time"
+            ],
+            "api": "/l1-conversions",
+            "sampleResult": [
+              {
+                "booking_date": "2024-07-01T00:00:00.000Z",
+                "bookings": 460,
+                "daily_revenue": 10047001.673124455
+              },
+              {
+                "booking_date": "2024-07-02T00:00:00.000Z",
+                "bookings": 437,
+                "daily_revenue": 50534958.83138851
+              }
+            ]
+          }
+        },
+        "stayPostStay": {
+          "npsAnalysis": {
+            "queryTime": 817,
+            "resultCount": 0,
+            "performance": "EXCELLENT",
+            "requiredIndexes": [
+              "booking_transaction_confirmationno + time",
+              "td_client_id + time"
+            ],
+            "api": "/l1-stay-poststay",
+            "sampleResult": []
+          },
+          "rebookingRates": {
+            "queryTime": 2990,
+            "resultCount": 2367,
+            "performance": "GOOD",
+            "requiredIndexes": [
+              "td_client_id + booking_transaction_confirmationno",
+              "td_client_id + time"
+            ],
+            "api": "/l1-stay-poststay",
+            "sampleResult": [
+              {
+                "td_client_id": "001d6963-bad0-47f9-84f6-d66632d39203",
+                "booking_count": 1
+              },
+              {
+                "td_client_id": "00391f1d-4f53-464a-9041-9d067028083e",
+                "booking_count": 1
+              }
+            ]
+          }
+        }
+      },
+      "summary": {
+        "totalQueries": 10,
+        "excellentCount": 4,
+        "goodCount": 3,
+        "slowCount": 2,
+        "criticalCount": 1,
+        "avgQueryTime": 10279,
+        "slowestQuery": {
+          "name": "/l1-awareness-engagement",
+          "time": 79503
+        }
+      }
+    },
+    "indexAnalysis": {
+      "currentIndexes": [
+        {
+          "index_name": null,
+          "index_type": "HEAP",
+          "indexed_columns": "time"
+        },
+        {
+          "index_name": "idx_pageviews_part_time",
+          "index_type": "NONCLUSTERED",
+          "indexed_columns": "time"
+        },
+        {
+          "index_name": "idx_pageviews_part_client_id",
+          "index_type": "NONCLUSTERED",
+          "indexed_columns": "time, td_client_id"
+        },
+        {
+          "index_name": "idx_pageviews_part_utm_medium",
+          "index_type": "NONCLUSTERED",
+          "indexed_columns": "time, utm_medium"
+        },
+        {
+          "index_name": "idx_pageviews_part_path_short",
+          "index_type": "NONCLUSTERED",
+          "indexed_columns": "time, td_path_short"
+        },
+        {
+          "index_name": "idx_pageviews_part_url_short",
+          "index_type": "NONCLUSTERED",
+          "indexed_columns": "time, td_url_short"
+        },
+        {
+          "index_name": "idx_pageviews_part_referrer_short",
+          "index_type": "NONCLUSTERED",
+          "indexed_columns": "time, td_referrer_short"
+        }
+      ],
+      "requiredIndexes": [
+        {
+          "name": "CLUSTERED INDEX",
+          "columns": "time",
+          "priority": "CRITICAL",
+          "usage": "All date range queries"
+        },
+        {
+          "name": "IX_client_time",
+          "columns": "td_client_id, time",
+          "priority": "HIGH",
+          "usage": "Unique visitors, login analysis"
+        },
+        {
+          "name": "IX_utm_source_time",
+          "columns": "utm_source, time",
+          "priority": "HIGH",
+          "usage": "Channel analysis"
+        },
+        {
+          "name": "IX_booking1_time",
+          "columns": "booking_transaction_confirmationno, time",
+          "priority": "HIGH",
+          "usage": "Booking queries"
+        },
+        {
+          "name": "IX_booking2_time",
+          "columns": "booking_transaction_confirmationno_1, time",
+          "priority": "HIGH",
+          "usage": "Booking queries (backup)"
+        },
+        {
+          "name": "IX_path_time",
+          "columns": "td_path, time",
+          "priority": "MEDIUM",
+          "usage": "Funnel analysis"
+        },
+        {
+          "name": "IX_login_time",
+          "columns": "user_userinfo_loginstatus, time",
+          "priority": "MEDIUM",
+          "usage": "Login status analysis"
+        },
+        {
+          "name": "IX_payment_time",
+          "columns": "booking_transaction_totalpayment, time",
+          "priority": "MEDIUM",
+          "usage": "Revenue analysis"
+        },
+        {
+          "name": "IX_nights_time",
+          "columns": "booking_bookingwidget_totalnightstay, time",
+          "priority": "MEDIUM",
+          "usage": "Room nights calculation"
+        }
+      ],
+      "indexGaps": [
+        {
+          "name": "IX_utm_source_time",
+          "columns": "utm_source, time",
+          "priority": "HIGH",
+          "usage": "Channel analysis"
+        },
+        {
+          "name": "IX_booking1_time",
+          "columns": "booking_transaction_confirmationno, time",
+          "priority": "HIGH",
+          "usage": "Booking queries"
+        },
+        {
+          "name": "IX_booking2_time",
+          "columns": "booking_transaction_confirmationno_1, time",
+          "priority": "HIGH",
+          "usage": "Booking queries (backup)"
+        },
+        {
+          "name": "IX_login_time",
+          "columns": "user_userinfo_loginstatus, time",
+          "priority": "MEDIUM",
+          "usage": "Login status analysis"
+        },
+        {
+          "name": "IX_payment_time",
+          "columns": "booking_transaction_totalpayment, time",
+          "priority": "MEDIUM",
+          "usage": "Revenue analysis"
+        },
+        {
+          "name": "IX_nights_time",
+          "columns": "booking_bookingwidget_totalnightstay, time",
+          "priority": "MEDIUM",
+          "usage": "Room nights calculation"
+        }
+      ],
+      "summary": {
+        "totalRequired": 9,
+        "totalMissing": 6,
+        "criticalMissing": 0,
+        "highMissing": 3
+      }
+    },
+    "optimizationPlan": {
+      "immediate": [],
+      "high": [
+        {
+          "action": "Create IX_utm_source_time",
+          "sql": "CREATE NONCLUSTERED INDEX IX_utm_source_time ON preprocessed.pageviews_partitioned(utm_source, time) WHERE utm_source IS NOT NULL;",
+          "impact": "Will improve Channel analysis by 5-20x",
+          "reason": "Channel analysis"
+        },
+        {
+          "action": "Create IX_booking1_time",
+          "sql": "CREATE NONCLUSTERED INDEX IX_booking1_time ON preprocessed.pageviews_partitioned(booking_transaction_confirmationno, time) WHERE booking_transaction_confirmationno IS NOT NULL;",
+          "impact": "Will improve Booking queries by 5-20x",
+          "reason": "Booking queries"
+        },
+        {
+          "action": "Create IX_booking2_time",
+          "sql": "CREATE NONCLUSTERED INDEX IX_booking2_time ON preprocessed.pageviews_partitioned(booking_transaction_confirmationno_1, time) WHERE booking_transaction_confirmationno_1 IS NOT NULL;",
+          "impact": "Will improve Booking queries (backup) by 5-20x",
+          "reason": "Booking queries (backup)"
+        }
+      ],
+      "medium": [
+        {
+          "action": "Create IX_login_time",
+          "sql": "CREATE NONCLUSTERED INDEX IX_login_time ON preprocessed.pageviews_partitioned(user_userinfo_loginstatus, time) WHERE user_userinfo_loginstatus IS NOT NULL;",
+          "impact": "Will improve Login status analysis by 3-10x",
+          "reason": "Login status analysis"
+        },
+        {
+          "action": "Create IX_payment_time",
+          "sql": "CREATE NONCLUSTERED INDEX IX_payment_time ON preprocessed.pageviews_partitioned(booking_transaction_totalpayment, time) WHERE booking_transaction_totalpayment IS NOT NULL;",
+          "impact": "Will improve Revenue analysis by 3-10x",
+          "reason": "Revenue analysis"
+        },
+        {
+          "action": "Create IX_nights_time",
+          "sql": "CREATE NONCLUSTERED INDEX IX_nights_time ON preprocessed.pageviews_partitioned(booking_bookingwidget_totalnightstay, time) WHERE booking_bookingwidget_totalnightstay IS NOT NULL;",
+          "impact": "Will improve Room nights calculation by 3-10x",
+          "reason": "Room nights calculation"
+        }
+      ],
+      "expectedImprovements": {
+        "Unique Visitors API": "From 1-3s to 100-300ms (10x faster)",
+        "Total Bookings API": "From 5-15s to 300-800ms (20x faster)",
+        "Channel Analysis": "From 3-10s to 200-500ms (15x faster)",
+        "Booking Funnel": "From 10-30s to 500ms-2s (20x faster)",
+        "Revenue Trends": "From 15-45s to 1-3s (15x faster)",
+        "NPS Analysis": "From 5-20s to 300ms-1s (20x faster)",
+        "Overall Dashboard": "From 60-120s to 8-15s (8x faster)"
+      }
+    },
+    "sqlGeneration": {
+      "scriptGenerated": true,
+      "filename": "dashboard-optimization.sql",
+      "totalActions": 6,
+      "sqlCommands": [
+        "CREATE NONCLUSTERED INDEX IX_utm_source_time ON preprocessed.pageviews_partitioned(utm_source, time) WHERE utm_source IS NOT NULL;",
+        "CREATE NONCLUSTERED INDEX IX_booking1_time ON preprocessed.pageviews_partitioned(booking_transaction_confirmationno, time) WHERE booking_transaction_confirmationno IS NOT NULL;",
+        "CREATE NONCLUSTERED INDEX IX_booking2_time ON preprocessed.pageviews_partitioned(booking_transaction_confirmationno_1, time) WHERE booking_transaction_confirmationno_1 IS NOT NULL;",
+        "CREATE NONCLUSTERED INDEX IX_login_time ON preprocessed.pageviews_partitioned(user_userinfo_loginstatus, time) WHERE user_userinfo_loginstatus IS NOT NULL;",
+        "CREATE NONCLUSTERED INDEX IX_payment_time ON preprocessed.pageviews_partitioned(booking_transaction_totalpayment, time) WHERE booking_transaction_totalpayment IS NOT NULL;",
+        "CREATE NONCLUSTERED INDEX IX_nights_time ON preprocessed.pageviews_partitioned(booking_bookingwidget_totalnightstay, time) WHERE booking_bookingwidget_totalnightstay IS NOT NULL;"
+      ]
+    }
+  }
+}
